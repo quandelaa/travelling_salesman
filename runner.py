@@ -1,5 +1,5 @@
 import tkinter as tk
-import tsp
+from tsp import Algos
 import threading
 from time import sleep
 from tkinter import messagebox
@@ -15,6 +15,8 @@ class TSP:
         self.cities = []
         self.end = None
         self.start = None
+
+        self.tsp = Algos()
 
         self.font = ("Verdana", 18)
         self.toggled = "city"
@@ -93,22 +95,14 @@ class TSP:
         solve_path_thread = threading.Thread(target=self.solve_path, args=(overall_path,), daemon=True)
         solve_path_thread.start()
 
-        overall_distance = self.mha_distance_for_overall_path(overall_path)
+        overall_distance = self.tsp.mha_distance_for_overall_path(overall_path)
 
         self.cur_distance_text.config(text=f"DISTANCE: {overall_distance} TILES")
-
-    def mha_distance_for_overall_path(self, overall_path):
-        overall_distance = 0
-        
-        for i in range(len(overall_path)-1):
-            overall_distance += tsp.mha_distance(overall_path[i], overall_path[i+1])
-
-        return overall_distance
 
     def solve_path(self, overall_path):
         with self.solving_lock:
             for i in range(len(overall_path)-1):    
-                path = tsp.walk(overall_path[i], overall_path[i+1])
+                path = self.tsp.walk(overall_path[i], overall_path[i+1])
                 self.path_colorize(path)
     
     def path_colorize(self, path):
@@ -212,7 +206,7 @@ class TSP:
         print(index)
         (x, y, x_size, y_size) = self.rectangles_size[id]
 
-        self.rectangles.create_text((x+x_size)/2, (y+y_size)/2, text=str(index+1), tags="city_num", fill="blue")
+        self.rectangles.create_text((x+x_size)/2, (y+y_size)/2, text=str(index+1), tags="city_num", fill="black")
 
     def change_city_text(self):
         self.rectangles.delete("city_num")
