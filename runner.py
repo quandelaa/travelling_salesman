@@ -28,11 +28,12 @@ class TSP:
         self.SIZE_XY = 40
         self.ROW_SIZE = 20
 
-        self.TILE_ANIM_DELAY = 0.05
+        self.TILE_ANIM_DELAY = 0.003
         
         self.font = ("Verdana", 18)
         self.toggled = "city"
 
+        self.best_path = None
         self.solving_lock = threading.Lock()
 
         self.setup_rectangles()
@@ -75,6 +76,7 @@ class TSP:
         clear_button = tk.Button(manager_window, text="CLEAR", font=self.font, fg=self.BLACK, bg=self.WHITE, command=self.clear)
 
         self.cur_distance_text = tk.Label(manager_window, text="DISTANCE: 0 TILES", font=self.font, bg=self.BLACK, fg=self.WHITE)
+        play_fastest_path = tk.Button(manager_window, text="PLAY FASTEST PATH", font=self.font, fg=self.BLACK, bg=self.WHITE, command=self.play_fastest)
 
         start_toggle.pack(fill="x")
         end_toggle.pack(fill="x")
@@ -84,6 +86,7 @@ class TSP:
 
         self.mode_text.pack()
         self.cur_distance_text.pack()
+        play_fastest_path.pack(fill="x")
 
     def solve(self):
         if self.solving_lock.locked():
@@ -102,22 +105,76 @@ class TSP:
             overall_path.append(city)
         overall_path.append(self.end)
 
-        self.clear()
+        simulated_annealing_thread = threading.Thread(target=self.simulated_annealing, args=(overall_path,), daemon=True)
+        simulated_annealing_thread.start()
 
-        solve_path_thread = threading.Thread(target=self.solve_path, args=(overall_path,), daemon=True)
+    def simulated_annealing(self, overall_path):
+        original_path = overall_path.copy()
+        
+        best_distance = float("inf")
+        self.best_path = original_path
+
+        temp = 1
+        t = 0
+
+        print(temp)
+
+        while temp > 0.001:
+            print("best", best_distance)
+
+            before = self.tsp.mha_distance_for_overall_path(original_path)
+
+            after_path = self.tsp.neighbor(original_path)  
+            print(after_path)     
+            after = self.tsp.mha_distance_for_overall_path(after_path)
+
+            diff = (before - after)
+
+            temp = self.tsp.temperature(temp)
+            print(temp)
+
+            if diff > 0:
+                original_path = after_path
+                print("lower than 0:", diff)
+            else:
+                if self.tsp.accept_verdict(before, after, temp):
+                    original_path = after_path
+                    print("accepted by verdict:", diff)
+                else:
+                    print("rejected by verdict:", diff)
+
+            cur_distance = self.tsp.mha_distance_for_overall_path(original_path)
+
+            if cur_distance < best_distance:
+                best_distance = cur_distance
+                self.best_path = original_path
+
+            self.cur_distance_text.config(text=f"({t+1}) DISTANCE: {self.tsp.mha_distance_for_overall_path(original_path)} TILES")
+
+            solve_path_thread = threading.Thread(target=self.solve_path, args=(original_path,), daemon=True)
+            solve_path_thread.start()
+
+            t += 1
+
+            solve_path_thread.join()
+
+    def play_fastest(self):
+        solve_path_thread = threading.Thread(target=self.solve_path, args=(self.best_path,), daemon=True)
         solve_path_thread.start()
 
-        overall_distance = self.tsp.mha_distance_for_overall_path(overall_path)
+    def solve_path(self, local_path):
+        if local_path is None:
+            self.warning("Haven't attempted a solve!")
+            return
+        
+        self.clear()
 
-        self.cur_distance_text.config(text=f"DISTANCE: {overall_distance} TILES")
-
-    def solve_path(self, overall_path):
         with self.solving_lock:
-            for i in range(len(overall_path)-1):    
-                path = self.tsp.walk(overall_path[i], overall_path[i+1])
-                self.path_colorize(path, overall_path)
+            for i in range(len(local_path)-1):    
+                path = self.tsp.walk(local_path[i], local_path[i+1])
+                self.path_colorize(path, local_path)
     
-    def path_colorize(self, path, overall_path):
+    def path_colorize(self, path, local_path):
         for point in path:
             col, row = point
             id = ((row)*self.ROW_SIZE)+col+1
@@ -125,12 +182,12 @@ class TSP:
             if self.rectangles.itemcget(id, "fill") == self.BLACK:
                 self.rectangles.itemconfig(id, fill=self.BLUE)
             elif self.rectangles.itemcget(id, "fill") == self.WHITE:
-                if point in overall_path:
-                    i = overall_path.index(point)
+                if point in local_path:
+                    i = local_path.index(point)
                     
                     if i > 1:
-                        col, row = overall_path[i-1]
-                        cur_col, cur_row = overall_path[i]
+                        col, row = local_path[i-1]
+                        cur_col, cur_row = local_path[i]
                         id = ((row)*self.ROW_SIZE)+col+1
                         cur_id = ((cur_row)*self.ROW_SIZE)+cur_col+1
 
@@ -163,21 +220,21 @@ class TSP:
             
             if color == self.GREEN:
                 self.start = None
-                print("start:",self.start)
+                # print("start:",self.start)
             elif color == self.RED:
                 self.end = None
-                print("end:",self.end)
+                # print("end:",self.end)
             elif color == self.WHITE or color == self.ORANGEISH:
                 self.cities.remove((col, row))
 
-                print("cities:",self.cities)
+                # print("cities:",self.cities)
 
             self.change_city_text()
 
             self.rectangles.itemconfig(id, fill=self.BLACK)
             self.rectangles.itemconfig(id, outline=self.WHITE)
 
-            print("declicked", id)
+            # print("declicked", id)
 
     def on_click(self, event):
         if self.solving_lock.locked():
@@ -201,7 +258,7 @@ class TSP:
                 color_config = self.WHITE
                 self.cities.append((col, row))
 
-                print("cities:", self.cities)
+                # print("cities:", self.cities)
 
                 self.create_city_text(col, row, id)
             
@@ -209,7 +266,7 @@ class TSP:
                 color_config = self.GREEN
                 if self.start is None:
                     self.start = (col, row)
-                    print("start:", self.start)
+                    # print("start:", self.start)
                 else:
                     self.warning("Start point can only be one")
                     return
@@ -217,7 +274,7 @@ class TSP:
                 color_config = self.RED
                 if self.end is None:
                     self.end = (col, row)
-                    print("end:", self.end)
+                    # print("end:", self.end)
                 else:
                     self.warning("End point can only be one")                
                     return
@@ -225,12 +282,12 @@ class TSP:
             self.rectangles.itemconfig(id, fill=color_config)
             self.rectangles.itemconfig(id, outline="black")
 
-            print("clicked", id)
+            # print("clicked", id)
 
     def create_city_text(self, col, row, id):
         index = self.cities.index((col, row))
 
-        print(index)
+        # print(index)
         (x, y, x_size, y_size) = self.rectangles_size[id]
 
         self.rectangles.create_text((x+x_size)/2, (y+y_size)/2, text=str(index+1), tags="city_num", fill="black")
