@@ -1,4 +1,5 @@
-from random import randint
+from random import randint, random
+from math import exp
 
 class Algos:
     def __init__(self):
@@ -16,17 +17,17 @@ class Algos:
 
         return overall_distance
 
+    # walk ---
+
     def walk(self, start_pos, end_pos):
         self.path.clear()
 
         self.c1, self.r1 = start_pos
         self.c2, self.r2 = end_pos
 
-        chooser = randint(0,1)
-
         self.cur_r, self.cur_c = self.r1, self.c1
         
-        if chooser:
+        if randint(0,1):
             self.row()
             self.col()
         else:
@@ -52,3 +53,25 @@ class Algos:
                 self.cur_c += 1
 
             self.path.append((self.cur_c, self.cur_r))
+
+    # --- sa
+
+    def neighbor(self, cur_overall_path):
+        new_overall_path = cur_overall_path.copy()
+        
+        if len(cur_overall_path) != 3:
+            base = randint(1, len(new_overall_path)-3)
+            i = base
+            j = base+1
+
+            new_overall_path[i], new_overall_path[j] = new_overall_path[j], new_overall_path[i]
+
+        return new_overall_path
+
+    def temperature(self, t_cur, const=0.97):
+        return t_cur * const
+    
+    def accept_verdict(self, before, after, temp):
+        probability = exp((before - after / temp))
+
+        return probability > random()
