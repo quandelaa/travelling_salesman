@@ -59,19 +59,20 @@ class Algos:
     def neighbor(self, cur_overall_path):
         new_overall_path = cur_overall_path.copy()
         
-        if len(cur_overall_path) != 3:
-            base = randint(1, len(new_overall_path)-3)
-            i = base
-            j = base+1
+        if len(cur_overall_path) not in (3,4):
+            i, j = randint(1, len(new_overall_path)-3), randint(1, len(new_overall_path)-3)
 
-            new_overall_path[i], new_overall_path[j] = new_overall_path[j], new_overall_path[i]
+            while i == j:
+                j = randint(1, len(new_overall_path)-3)
+
+            new_overall_path[i:j] = reversed(new_overall_path[i:j])
 
         return new_overall_path
 
-    def temperature(self, t_cur, const=0.97):
+    def temperature(self, t_cur, const=0.995):
         return t_cur * const
     
     def accept_verdict(self, before, after, temp):
-        probability = exp((before - after / temp))
+        probability = exp((before - after) / temp)
 
-        return probability > random()
+        return probability > random(), probability
