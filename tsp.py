@@ -60,10 +60,11 @@ class Algos:
         new_overall_path = cur_overall_path.copy()
         
         if len(cur_overall_path) not in (3,4):
-            i, j = randint(1, len(new_overall_path)-3), randint(1, len(new_overall_path)-3)
+            i = randint(1, len(new_overall_path)-1)
+            j = randint(i, len(new_overall_path)-1)
 
-            while i == j:
-                j = randint(1, len(new_overall_path)-3)
+            while i == j and i != len(new_overall_path)-1:
+                j = randint(i, len(new_overall_path)-1)
 
             new_overall_path[i:j] = reversed(new_overall_path[i:j])
 
