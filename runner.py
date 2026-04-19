@@ -227,7 +227,7 @@ class TSP:
             return
 
         col = event.x // self.SIZE_XY
-        row = event.y // 40
+        row = event.y // self.SIZE_XY
             
         id = ((row)*self.ROW_SIZE)+col+1
 
